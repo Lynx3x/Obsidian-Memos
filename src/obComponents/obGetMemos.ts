@@ -212,13 +212,8 @@ export async function getMemosFromDailyNote(
             // console.log(commentsInMemos[0].children.values[j].text);
             const hasId = '';
             let commentTime;
-<<<<<<< HEAD
-            if (/^\d{12}/.test(commentsInMemos[0].children.values[j].text)) {
-              commentTime = commentsInMemos[0].children.values[j].text?.match(/^\d{14}/)[0];
-=======
             if (/^\d{12}/.test(commentsInMemos[0].children[j].text)) {
               commentTime = commentsInMemos[0].children[j].text?.match(/^\d{14}/)[0];
->>>>>>> 4a164c298b6ec45f63cfe1973279f2e915033675
             } else {
               commentTime = startDate.format('YYYYMMDDHHmmSS');
             }
@@ -274,8 +269,8 @@ export async function getMemosFromNote(allMemos: any[], commentMemos: any[]): Pr
       const line = list.values[j].line;
       let memoType = 'JOURNAL';
       let hasId;
-     // let realCreateDate = moment(createDate, 'YYYY-MM-DD HH:mm');
-      let realCreateDate = createDate.toFormat("yyyy-MM-dd HH:mm");
+      // let realCreateDate = moment(createDate, 'YYYY-MM-DD HH:mm');
+      let realCreateDate = createDate.toFormat('yyyy-MM-dd HH:mm');
       if (/\^\S{6}$/g.test(content)) {
         hasId = content.slice(-6);
         // originId = hasId;

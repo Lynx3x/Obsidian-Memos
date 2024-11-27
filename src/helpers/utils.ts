@@ -1,6 +1,5 @@
 import { moment, Notice, TFile } from 'obsidian';
-import { createDailyNote } from 'obsidian-daily-notes-interface';
-import { getDailyNoteSettings } from '_obsidian-daily-notes-interface@0.9.4@obsidian-daily-notes-interface';
+import { createDailyNote, getDailyNoteSettings } from 'obsidian-daily-notes-interface';
 import { t } from '../translations/helper';
 import { UseDailyOrPeriodic } from '../memos';
 
@@ -252,13 +251,6 @@ namespace utils {
 
   export async function createDailyNoteCheck(date: any): Promise<TFile> {
     let file;
-
-<<<<<<< HEAD
-    if (window.app.plugins?.getPlugin('periodic-notes')?.calendarSetManager.getActiveConfig('day')?.enabled) {
-      const periodicNotes = window.app.plugins.getPlugin('periodic-notes');
-      file = await periodicNotes.createPeriodicNote('day', date);
-      return file;
-=======
     switch (UseDailyOrPeriodic) {
       case 'Daily':
         file = await createDailyNote(date);
@@ -269,10 +261,7 @@ namespace utils {
       default:
         file = await createDailyNote(date);
         break;
->>>>>>> 4a164c298b6ec45f63cfe1973279f2e915033675
     }
-
-    file = await createDailyNote(date);
     return file;
   }
 }
