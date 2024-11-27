@@ -177,7 +177,7 @@ export default class MemosPlugin extends Plugin {
     // const leaf = workspace.getLeaf(
     //   !Platform.isMobile && workspace.activeLeaf && workspace.activeLeaf.view instanceof FileView,
     // );
-    const leaf = workspace.getLeaf(false);
+    const leaf = workspace.getLeaf(true);
     await leaf.setViewState({ type: MEMOS_VIEW_TYPE });
     workspace.revealLeaf(leaf);
 
