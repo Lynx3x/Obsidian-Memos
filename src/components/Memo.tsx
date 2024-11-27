@@ -616,12 +616,38 @@ export function formatMemoContent(content: string, memoid?: string) {
   // }
 
   content = content
-    .replace(TAG_REG, "<span class='tag-span'>#$1</span>")
-    .replace(FIRST_TAG_REG, "<p><span class='tag-span'>#$2</span>")
+    // .replace(TAG_REG, "<span class='tag-span'>#$1</span>")
+    // .replace(FIRST_TAG_REG, "<p><span class='tag-span'>#$2</span>")
     .replace(LINK_REG, "$1<a class='link' target='_blank' rel='noreferrer' href='$2'>$2</a>")
     .replace(MD_LINK_REG, "<a class='link' target='_blank' rel='noreferrer' href='$2'>$1</a>")
     .replace(MEMO_LINK_REG, "<span class='memo-link-text' data-value='$2'>$1</span>")
     .replace(/\^\S{6}/g, '');
+
+  const tagsCollect = (content: string) => {
+    let tags = [...content.matchAll(TAG_REG)];
+    tags = [...tags, ...content.matchAll(FIRST_TAG_REG)];
+    tags.sort((tag, tag2) => tag.index - tag2.index);
+    content = content.replace(TAG_REG, '').replace(FIRST_TAG_REG, '');
+
+    let tagsComponent = `<p>`;
+    const tagsOnTop = false;
+    if (tags.length > 0) {
+      for (const tag of tags) {
+        tagsComponent += `<span class='tag-span'>#${tag[tag.length - 1]}</span>`;
+      }
+      if (tagsOnTop) {
+        content = tagsComponent + content;
+      } else {
+        content += tagsComponent;
+      }
+    }
+    return content;
+  };
+
+  content = tagsCollect(content);
+
+  // .replace(TAG_REG, "<span class='tag-span'>#$1</span>")
+  // .replace(FIRST_TAG_REG, "<p><span class='tag-span'>#$2</span>")
 
   // const contentMark = content.split('');
 
