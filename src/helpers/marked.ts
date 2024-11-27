@@ -111,7 +111,7 @@ const parseHtmlToRawText = (htmlStr: string): string => {
 };
 
 const parseRawTextToHtml = (rawTextStr: string): string => {
-  const htmlText = rawTextStr.replace(/\n/g, '<br>');
+  const htmlText = rawTextStr.replace(/\n/g, '<br> ');
   return htmlText;
 };
 

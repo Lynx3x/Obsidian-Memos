@@ -39,7 +39,7 @@ export async function commentMemo(
   // const plugin = window.plugin;
   const { vault, metadataCache } =
     appStore.getState().dailyNotesState.app === undefined ? app : appStore.getState().dailyNotesState.app;
-  const removeEnter = MemoContent.replace(/\n/g, '<br>');
+  const removeEnter = MemoContent.replace(/\n/g, '<br>').replace(/(<br>)(<br>)/g, '$1 $2');
 
   if (path === undefined) {
     return;

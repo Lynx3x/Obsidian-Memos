@@ -30,7 +30,7 @@ export async function changeMemo(
   }
   const fileContent = await vault.read(file);
   const fileLines = getAllLinesFromFile(fileContent);
-  const removeEnter = content.replace(/\n/g, '<br>');
+  const removeEnter = content.replace(/\n/g, '<br>').replace(/(<br>)(<br>)/g, '$1 $2');
   const originalLine = fileLines[idString];
   const newLine = fileLines[idString].replace(originalContent, removeEnter);
   const newFileContent = fileContent.replace(originalLine, newLine);
