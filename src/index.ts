@@ -16,7 +16,7 @@ export default class MemosPlugin extends Plugin {
 
     this.registerView(MEMOS_VIEW_TYPE, (leaf) => new Memos(leaf, this));
 
-    this.app.workspace.onLayoutReady(this.onLayoutReady.bind(this));
+    this.app.workspace.onLayoutReady(() => this.onLayoutReady);
     console.log(t('welcome'));
   }
 
