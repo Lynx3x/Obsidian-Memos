@@ -17,4 +17,3 @@ logo.svg
 *.log
 
 .vscode/*
-pnpm-lock.yaml
