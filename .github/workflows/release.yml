@@ -26,6 +26,7 @@ jobs:
       - name: Build
         id: build
         run: |
+          git config --global url."https://".insteadOf git+ssh://git@
           pnpm install
           pnpm run build
           mkdir ${{ env.PLUGIN_NAME }}
