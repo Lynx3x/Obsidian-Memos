@@ -511,13 +511,13 @@ const MemoEditor: React.FC<Props> = () => {
         const prevMemo = memoService.getMemoById(editMemoId);
         content = content + (prevMemo.hasId === '' ? '' : ' ^' + prevMemo.hasId);
         if (prevMemo && prevMemo.content !== content) {
-          const editedMemo = await memoService.updateMemo(
-            prevMemo.id,
-            prevMemo.content,
-            content,
-            prevMemo.memoType,
-            prevMemo.path,
-          );
+          const editedMemo = await memoService.updateMemo({
+            memoId:prevMemo.id,
+            originalText:prevMemo.content,
+            text:content,
+            type:prevMemo.memoType,
+            path:prevMemo.path,
+          });
           editedMemo.updatedAt = utils.getDateTimeString(Date.now());
           memoService.editMemo(editedMemo);
         }

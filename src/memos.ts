@@ -62,7 +62,7 @@ export class Memos extends ItemView {
       if (getDateFromFile(file, 'day')) {
         dailyNotesService.getMyAllDailyNotes();
         // memoService.clearMemos();
-        memoService.fetchAllMemos();
+        // memoService.fetchAllMemos();
       }
     }
   }

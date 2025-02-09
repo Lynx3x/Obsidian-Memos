@@ -252,13 +252,11 @@ namespace utils {
     let file;
     switch (UseDailyOrPeriodic) {
       case 'Daily':
+      default:
         file = await createDailyNote(date);
         break;
       case 'Periodic':
         file = await window.app.plugins.getPlugin('periodic-notes')?.createDailyNote('day', date);
-        break;
-      default:
-        file = await createDailyNote(date);
         break;
     }
     return file;

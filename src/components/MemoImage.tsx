@@ -100,7 +100,7 @@ const MemoImage: React.FC<Props> = (props: Props) => {
     const anotherExternalImageUrls = [] as string[];
     if (MARKDOWN_URL_REG.test(memo)) {
       allMarkdownLink = Array.from(memo.match(MARKDOWN_URL_REG));
-    }
+      }
     if (WIKI_IMAGE_URL_REG.test(memo)) {
       allInternalLink = Array.from(memo.match(WIKI_IMAGE_URL_REG));
     }
@@ -117,8 +117,8 @@ const MemoImage: React.FC<Props> = (props: Props) => {
     if (allMarkdownLink.length) {
       for (let i = 0; i < allMarkdownLink.length; i++) {
         const allMarkdownLinkElement = allMarkdownLink[i];
-        if (/(.*)http[s]?(.*)/.test(allMarkdownLinkElement)) {
-          anotherExternalImageUrls.push(MARKDOWN_URL_REG.exec(allMarkdownLinkElement)?.[5]);
+          if (/(.*)http[s]?(.*)/.test(allMarkdownLinkElement)) {
+              anotherExternalImageUrls.push([...(allMarkdownLinkElement as string).matchAll(MARKDOWN_URL_REG)][0]?.[5]);
         } else {
           internalImageUrls.push(detectMDInternalLink(allMarkdownLinkElement));
         }
