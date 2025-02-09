@@ -161,34 +161,31 @@ const Memo: React.FC<Props> = (props: Props) => {
     try {
       if (commentMemoId) {
         memoCommentRef.current?.setContent('');
-        let prevMemo: Model.Memo;
-        if (CommentOnMemos && CommentsInOriginalNotes) {
-          prevMemo = memoService.getCommentMemoById(commentMemoId);
-          // console.log(prevMemo);
-          content = moment().format('YYYYMMDDHHmmss') + ' ' + content;
-        } else {
-          prevMemo = memoService.getMemoById(commentMemoId);
-          // console.log(prevMemo);
-          content = prevMemo.content.replace(/^(.*) comment:/g, content + ' comment:');
+        const memo = CommentOnMemos && CommentsInOriginalNotes
+          ? memoService.getCommentMemoById(commentMemoId)
+          : memoService.getMemoById(commentMemoId);
+        
+        if (!memo) {
+          throw new Error('Memo not found');
         }
+
+        const prevMemo = memo;
+        content = CommentOnMemos && CommentsInOriginalNotes
+          ? moment().format('YYYYMMDDHHmmss') + ' ' + content
+          : prevMemo.content.replace(/^(.*) comment:/g, content + ' comment:');
 
         // console.log(content);
 
         // console.log(m);
 
         if (prevMemo && prevMemo.content !== content) {
-          let editedMemo: Model.Memo;
-          if (CommentOnMemos && CommentsInOriginalNotes) {
-            editedMemo = await memoService.updateMemo(
-              prevMemo.id,
-              prevMemo.content,
-              content,
-              prevMemo.memoType,
-              prevMemo.path,
-            );
-          } else {
-            editedMemo = await memoService.updateMemo(prevMemo.id, prevMemo.content, content, prevMemo.memoType);
-          }
+          const editedMemo = await memoService.updateMemo({
+            memoId: prevMemo.id,
+            originalText: prevMemo.content,
+            text: content,
+            type: prevMemo.memoType,
+            path: CommentOnMemos && CommentsInOriginalNotes ? prevMemo.path : undefined
+          });
           if (CommentOnMemos && CommentsInOriginalNotes) {
             memoService.editCommentMemo(editedMemo);
           } else {
@@ -211,25 +208,28 @@ const Memo: React.FC<Props> = (props: Props) => {
         toggleComment(false);
       } else {
         const dailyFormat = getDailyNoteFormat();
-        let randomId: string;
-        if (propsMemo.hasId.length > 0) {
-          randomId = propsMemo.hasId;
-        } else if (!CommentsInOriginalNotes) {
+        let randomId = propsMemo.hasId || '';
+        
+        if (!randomId && !CommentsInOriginalNotes) {
           randomId = Math.random().toString(36).slice(-6);
           setAddRandomIDflag(true);
         }
 
-        if (!CommentsInOriginalNotes) {
-          content =
-            content + ' comment: [[' + moment(propsMemo.id.slice(0, 8)).format(dailyFormat) + '#^' + randomId + ']]';
-        }
+        const finalContent = !CommentsInOriginalNotes && randomId
+          ? content + ' comment: [[' + moment(propsMemo.id.slice(0, 8)).format(dailyFormat) + '#^' + randomId + ']]'
+          : content;
 
-        // setEditorContentCache('');
         memoCommentRef.current?.setContent('');
 
         let newMemo: Model.Memo;
         if (CommentsInOriginalNotes) {
-          newMemo = await memoService.createCommentMemo(content, true, propsMemo.path, propsMemo.id, randomId);
+          newMemo = await memoService.createCommentMemo({
+            text: finalContent,
+            isList: true,
+            path: propsMemo.path,
+            ID: propsMemo.id,
+            hasID: randomId || ''
+          });
           memoService.pushCommentMemo(newMemo);
         } else {
           newMemo = await memoService.createMemo(content, true);
@@ -249,12 +249,12 @@ const Memo: React.FC<Props> = (props: Props) => {
         //   ),
         // );
         if (RandomIDRef.current) {
-          const editedMemo = await memoService.updateMemo(
-            propsMemo.id,
-            propsMemo.content,
-            propsMemo.content + ' ^' + randomId,
-            propsMemo.memoType,
-          );
+          const editedMemo = await memoService.updateMemo({
+            memoId: propsMemo.id,
+            originalText: propsMemo.content,
+            text: propsMemo.content + ' ^' + randomId,
+            type: propsMemo.memoType
+          });
           editedMemo.updatedAt = utils.getDateTimeString(Date.now());
           memoService.editMemo(editedMemo);
           setAddRandomIDflag(false);
@@ -294,8 +294,8 @@ const Memo: React.FC<Props> = (props: Props) => {
       const elem = document.querySelector(
         "div[data-type='memos_view'] .view-content .memo-show-editor-button",
       ) as HTMLElement;
-      if (typeof elem?.onclick == 'function') {
-        elem.onclick.apply(elem);
+      if (elem?.onclick) {
+        (elem.onclick as EventListener).call(elem, new MouseEvent('click'));
       }
     }
 
@@ -307,8 +307,8 @@ const Memo: React.FC<Props> = (props: Props) => {
       const elem = document.querySelector(
         "div[data-type='memos_view'] .view-content .memo-show-editor-button",
       ) as HTMLElement;
-      if (typeof elem.onclick == 'function') {
-        elem.onclick.apply(elem);
+      if (elem.onclick) {
+        (elem.onclick as EventListener).call(elem, new MouseEvent('click'));
       }
     }
 
@@ -316,7 +316,7 @@ const Memo: React.FC<Props> = (props: Props) => {
   };
 
   const handleSourceMemoClick = (m: Model.Memo) => {
-    showMemoInDailyNotes(m.id, m.path);
+    showMemoInDailyNotes(m.id, m.path || '');
   };
 
   // const handleCreateNewNoteClick = () => {
@@ -351,7 +351,7 @@ const Memo: React.FC<Props> = (props: Props) => {
 
   const handleMemoTypeShow = () => {
     if (!ShowTaskLabel) {
-      return;
+      return null;
     }
 
     if (propsMemo.memoType === 'TASK-TODO') {
@@ -359,6 +359,7 @@ const Memo: React.FC<Props> = (props: Props) => {
     } else if (propsMemo.memoType === 'TASK-DONE') {
       return <Task />;
     }
+    return null;
   };
 
   // const handleMemoKeyDown = useCallback((event: React.MouseEvent, m) => {
@@ -458,7 +459,7 @@ const Memo: React.FC<Props> = (props: Props) => {
       <div className="memo-top-wrapper">
         <div className="memo-top-left-wrapper">
           <span className="time-text" onClick={handleShowMemoStoryDialog}>
-            {propsMemo.createdAt}
+            {utils.getDateTimeString(propsMemo.createdAt)}
           </span>
           <div
             className={`memo-type-img ${
@@ -547,7 +548,7 @@ const Memo: React.FC<Props> = (props: Props) => {
               {/*// TODO*/}
               {commentMemos.map((m, idx) => (
                 <div key={idx} className="memo-comment">
-                  <div className="memo-comment-time">{m.createdAt}</div>
+                  <div className="memo-comment-time">{utils.getDateTimeString(m.createdAt)}</div>
                   {/*<div className="memo-comment-text" onDoubleClick={() => handleEditCommentClick(m)}>*/}
                   {/*  {m.content.replace(/comment:(.*)]]/g, '').replace(/^\d{14} /g, '')}*/}
                   {/*</div>*/}

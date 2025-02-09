@@ -1,269 +1,267 @@
 import api from '../helpers/api';
 import { FIRST_TAG_REG, NOP_FIRST_TAG_REG, TAG_REG } from '../helpers/consts';
-import utils from '../helpers/utils';
-import appStore from '../stores/appStore';
 import { waitForInsert } from '../obComponents/obCreateMemo';
 import { changeMemo } from '../obComponents/obUpdateMemo';
 import { commentMemo } from '../obComponents/obCommentMemo';
-// import { TFile } from 'obsidian';
+import appStore from '../stores/appStore';
+import { State as MemoStoreState } from '../stores/memoStore';
+import type { CreateCommentMemoParams, UpdateMemoParams } from '../types/memo';
 
-// import userService from "./userService";
-
+/**
+ * 备忘录服务类 - 处理所有与备忘录相关的操作
+ */
 class MemoService {
-  public initialized = false;
+    /** 初始化状态标志 */
+    private initialized = false;
 
-  public getState() {
-    return appStore.getState().memoState;
-  }
-
-  public async fetchAllMemos() {
-    // if (!userService.getState().user) {
-    //   return false;
-    // }
-
-    // const { data } = await api.getMyMemos();
-    const data = await api.getMyMemos();
-    const memos = [] as any[];
-    const commentMemos = [] as any[];
-    for (const m of data.memos) {
-      memos.push(m);
-    }
-    for (const m of data.commentMemos) {
-      commentMemos.push(m);
-    }
-    appStore.dispatch({
-      type: 'SET_MEMOS',
-      payload: {
-        memos,
-      },
-    });
-    appStore.dispatch({
-      type: 'SET_COMMENT_MEMOS',
-      payload: {
-        commentMemos,
-      },
-    });
-
-    if (!this.initialized) {
-      this.initialized = true;
+    /**
+     * 获取当前备忘录状态
+     */
+    public getState(): MemoStoreState {
+        return appStore.getState().memoState;
     }
 
-    return memos;
-  }
+    /**
+     * 获取所有备忘录
+     * 从API获取备忘录数据并更新到store
+     */
+    public async fetchAllMemos(): Promise<Model.Memo[]> {
+        const data = await api.getMyMemos();
 
-  // TODO
-  // public async fetchAllCommentsMemos() {
-  //   const data = await api.getMyCommentMemos();
-  //   const commentMemos = [] as any[];
-  //   for (const m of data.commentMemos) {
-  //     commentMemos.push(m);
-  //   }
-  //   appStore.dispatch({
-  //     type: 'SET_COMMENT_MEMOS',
-  //     payload: {
-  //       commentMemos,
-  //     },
-  //   });
-  // }
+        // 分离普通备忘录和评论备忘录
+        const memos = data.memos || [];
+        const commentMemos = data.commentMemos || [];
 
-  // TODO
-  // public async fetchFileMemos(file: TFile) {
-  //   const data = await api.getFileMemos(file);
-  //   const memos = [] as any[];
-  //   for (const m of data.memos) {
-  //     memos.push(m);
-  //   }
-  // }
+        // 更新store中的备忘录数据
+        this.updateMemoStore(memos, commentMemos);
 
-  public async fetchDeletedMemos() {
-    // if (!userService.getState().user) {
-    //   return false;
-    // }
+        if (!this.initialized) {
+            this.initialized = true;
+        }
 
-    const data = await api.getMyDeletedMemos();
-    data.sort(
-      (a: { deletedAt: string | number | Date }, b: { deletedAt: string | number | Date }) =>
-        utils.getTimeStampByDate(b.deletedAt) - utils.getTimeStampByDate(a.deletedAt),
-    );
-    return data;
-  }
-
-  // TODO
-  // public async deletePageMemo(file: TFile) {
-  //   appStore.dispatch({
-  //     type: 'DELETED_MEMO_BY_FILE',
-  //     payload: {
-  //       file,
-  //     },
-  //   });
-  // }
-
-  public pushMemo(memo: Model.Memo) {
-    appStore.dispatch({
-      type: 'INSERT_MEMO',
-      payload: {
-        memo: {
-          ...memo,
-        },
-      },
-    });
-  }
-
-  public pushCommentMemo(memo: Model.Memo) {
-    appStore.dispatch({
-      type: 'INSERT_COMMENT_MEMO',
-      payload: {
-        memo: {
-          ...memo,
-        },
-      },
-    });
-  }
-
-  public getMemoById(id: string) {
-    for (const m of this.getState().memos) {
-      if (m.id === id) {
-        return m;
-      }
+        return memos;
     }
 
-    return null;
-  }
-
-  public getCommentMemoById(id: string) {
-    for (const m of this.getState().commentMemos) {
-      if (m.id === id) {
-        return m;
-      }
+    /**
+     * 获取已删除的备忘录列表
+     */
+    public async fetchDeletedMemos(): Promise<Model.Memo[]> {
+        const deletedMemos = await api.getMyDeletedMemos();
+        return deletedMemos.sort((a, b) =>
+            new Date(b.deletedAt || '').getTime() - new Date(a.deletedAt || '').getTime()
+        );
     }
 
-    return null;
-  }
-
-  public async hideMemoById(id: string) {
-    await api.hideMemo(id);
-    appStore.dispatch({
-      type: 'DELETE_MEMO_BY_ID',
-      payload: {
-        id: id,
-      },
-    });
-  }
-
-  public async restoreMemoById(id: string) {
-    await api.restoreMemo(id);
-    // memoService.clearMemos();
-    // memoService.fetchAllMemos();
-  }
-
-  public async deleteMemoById(id: string) {
-    await api.deleteMemo(id);
-  }
-
-  public editMemo(memo: Model.Memo) {
-    appStore.dispatch({
-      type: 'EDIT_MEMO',
-      payload: memo,
-    });
-  }
-
-  public editCommentMemo(memo: Model.Memo) {
-    appStore.dispatch({
-      type: 'EDIT_COMMENT_MEMO',
-      payload: memo,
-    });
-  }
-
-  public updateTagsState() {
-    const { memos } = this.getState();
-    const tagsSet = new Set<string>();
-    const tempTags = new Set<string>();
-    const tags = [] as string[];
-    for (const m of memos) {
-      for (const t of Array.from(m.content.match(TAG_REG) ?? [])) {
-        tagsSet.add(t.replace(TAG_REG, '$1').trim());
-        tempTags.add(t.replace(TAG_REG, '$1').trim());
-      }
-      for (const t of Array.from(m.content.match(NOP_FIRST_TAG_REG) ?? [])) {
-        tagsSet.add(t.replace(NOP_FIRST_TAG_REG, '$1').trim());
-        tempTags.add(t.replace(NOP_FIRST_TAG_REG, '$1').trim());
-      }
-      for (const t of Array.from(m.content.match(FIRST_TAG_REG) ?? [])) {
-        tagsSet.add(t.replace(FIRST_TAG_REG, '$2').trim());
-        tempTags.add(t.replace(FIRST_TAG_REG, '$2').trim());
-      }
-      Array.from(tempTags).forEach((t) => {
-        tags.push(t);
-      });
-      tempTags.clear();
+    /**
+     * 向store中添加新的备忘录
+     */
+    public pushMemo(memo: Model.Memo): void {
+        appStore.dispatch({
+            type: 'INSERT_MEMO',
+            payload: { memo: { ...memo } }
+        });
     }
 
-    const counts = {} as { [key: string]: number };
-    tags.forEach(function (x) {
-      counts[x] = (counts[x] || 0) + 1;
-    });
+    /**
+     * 向store中添加新的评论备忘录
+     */
+    public pushCommentMemo(memo: Model.Memo): void {
+        appStore.dispatch({
+            type: 'INSERT_COMMENT_MEMO',
+            payload: { memo: { ...memo } }
+        });
+    }
 
-    appStore.dispatch({
-      type: 'SET_TAGS',
-      payload: {
-        tags: Array.from(tagsSet),
-        tagsNum: counts,
-      },
-    });
-  }
+    /**
+     * 根据ID查找备忘录
+     */
+    public getMemoById(id: string): Model.Memo | null {
+        return this.getState().memos.find((m: Model.Memo) => m.id === id) || null;
+    }
 
-  public clearMemos() {
-    appStore.dispatch({
-      type: 'SET_MEMOS',
-      payload: {
-        memos: [],
-      },
-    });
-  }
+    /**
+     * 根据ID查找评论备忘录
+     */
+    public getCommentMemoById(id: string): Model.Memo | null {
+        return this.getState().commentMemos.find((m: Model.Memo) => m.id === id) || null;
+    }
 
-  public async getLinkedMemos(memoId: string): Promise<Model.Memo[]> {
-    const { memos } = this.getState();
-    return memos.filter((m) => m.content.includes(memoId));
-  }
+    /**
+     * 隐藏（软删除）指定备忘录
+     */
+    public async hideMemoById(id: string): Promise<void> {
+        await api.hideMemo(id);
+        appStore.dispatch({
+            type: 'DELETE_MEMO_BY_ID',
+            payload: { id }
+        });
+    }
 
-  public async getCommentMemos(memoId: string): Promise<Model.Memo[]> {
-    const { memos } = this.getState();
-    return memos.filter((m) => m.content.includes('comment: ' + memoId));
-  }
+    /**
+     * 恢复已删除的备忘录
+     */
+    public async restoreMemoById(id: string): Promise<void> {
+        await api.restoreMemo(id);
+    }
 
-  public async createMemo(text: string, isTASK: boolean): Promise<Model.Memo> {
-    const memo = await waitForInsert(text, isTASK);
-    return memo;
-  }
+    /**
+     * 永久删除备忘录
+     */
+    public async deleteMemoById(id: string): Promise<void> {
+        await api.deleteMemo(id);
+    }
 
-  public async createCommentMemo(
-    text: string,
-    isList: boolean,
-    path: string,
-    ID: string,
-    hasID: string,
-  ): Promise<Model.Memo> {
-    const memo = await commentMemo(text, isList, path, ID, hasID);
-    return memo;
-  }
+    /**
+     * 编辑备忘录内容
+     */
+    public editMemo(memo: Model.Memo): void {
+        appStore.dispatch({
+            type: 'EDIT_MEMO',
+            payload: memo
+        });
+    }
 
-  public async importMemos(text: string, isList: boolean, date: any): Promise<Model.Memo> {
-    const memo = await waitForInsert(text, isList, date);
-    return memo;
-  }
+    /**
+     * 编辑评论备忘录内容
+     */
+    public editCommentMemo(memo: Model.Memo): void {
+        appStore.dispatch({
+            type: 'EDIT_COMMENT_MEMO',
+            payload: memo
+        });
+    }
 
-  public async updateMemo(
-    memoId: string,
-    originalText: string,
-    text: string,
-    type?: string,
-    path?: string,
-  ): Promise<Model.Memo> {
-    const memo = await changeMemo(memoId, originalText, text, type, path);
-    return memo;
-  }
+    /**
+     * 更新标签状态
+     * 解析所有备忘录中的标签并更新到store
+     */
+    public updateTagsState(): void {
+        const { memos } = this.getState();
+        const uniqueTags = new Set<string>();
+        const tagCounts: { [key: string]: number; } = {};
+
+        // 遍历所有备忘录收集标签
+        memos.forEach((memo: Model.Memo) => {
+            const tags = this.extractTagsFromContent(memo.content);
+            tags.forEach(tag => {
+                uniqueTags.add(tag);
+                tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+            });
+        });
+
+        // 更新store中的标签数据
+        appStore.dispatch({
+            type: 'SET_TAGS',
+            payload: {
+                tags: Array.from(uniqueTags),
+                tagsNum: tagCounts
+            }
+        });
+    }
+
+    /**
+     * 清空store中的备忘录数据
+     */
+    public clearMemos(): void {
+        appStore.dispatch({
+            type: 'SET_MEMOS',
+            payload: { memos: [] }
+        });
+    }
+
+    /**
+     * 获取链接到指定备忘录的所有备忘录
+     */
+    public async getLinkedMemos(memoId: string): Promise<Model.Memo[]> {
+        return this.getState().memos.filter((m: Model.Memo) => m.content.includes(memoId));
+    }
+
+    /**
+     * 获取指定备忘录的所有评论
+     */
+    public async getCommentMemos(memoId: string): Promise<Model.Memo[]> {
+        return this.getState().memos.filter((m: Model.Memo) => m.content.includes('comment: ' + memoId));
+    }
+
+    /**
+     * 创建新的备忘录
+     * 为了保持向后兼容性，保留了原有的参数形式
+     */
+    public async createMemo(text: string, isTask: boolean, date?: Date): Promise<Model.Memo> {
+        return await waitForInsert(text, isTask, date);
+    }
+
+    /**
+     * 创建新的评论备忘录
+     */
+    public async createCommentMemo(params: CreateCommentMemoParams): Promise<Model.Memo> {
+        return await commentMemo(params.text, params.isList, params.path, params.ID, params.hasID);
+    }
+
+    /**
+     * 导入备忘录
+     */
+    public async importMemos(text: string, isList: boolean, date: Date): Promise<Model.Memo> {
+        return await waitForInsert(text, isList, date);
+    }
+
+    /**
+     * 更新备忘录内容
+     */
+    public async updateMemo(params: UpdateMemoParams): Promise<Model.Memo> {
+        return await changeMemo(
+            params.memoId,
+            params.originalText,
+            params.text,
+            params.type,
+            params.path
+        );
+    }
+
+    // 私有辅助方法
+
+    /**
+     * 从文本内容中提取标签
+     */
+    private extractTagsFromContent(content: string): string[] {
+        const tags = new Set<string>();
+
+        // 匹配不同格式的标签
+        const matches = [
+            ...(content.match(TAG_REG) || []),
+            ...(content.match(NOP_FIRST_TAG_REG) || []),
+            ...(content.match(FIRST_TAG_REG) || [])
+        ];
+
+        matches.forEach(match => {
+            if (TAG_REG.test(match)) {
+                tags.add(match.replace(TAG_REG, '$1').trim());
+            } else if (NOP_FIRST_TAG_REG.test(match)) {
+                tags.add(match.replace(NOP_FIRST_TAG_REG, '$1').trim());
+            } else if (FIRST_TAG_REG.test(match)) {
+                tags.add(match.replace(FIRST_TAG_REG, '$2').trim());
+            }
+        });
+
+        return Array.from(tags);
+    }
+
+    /**
+     * 更新store中的备忘录数据
+     */
+    private updateMemoStore(memos: Model.Memo[], commentMemos: Model.Memo[]): void {
+        appStore.dispatch({
+            type: 'SET_MEMOS',
+            payload: { memos }
+        });
+
+        appStore.dispatch({
+            type: 'SET_COMMENT_MEMOS',
+            payload: { commentMemos }
+        });
+    }
 }
 
+// 导出单例实例
 const memoService = new MemoService();
-
 export default memoService;

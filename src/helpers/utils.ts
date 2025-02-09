@@ -50,11 +50,13 @@ namespace utils {
 
     const hours = d.getHours();
     const mins = d.getMinutes();
+    const secs = d.getSeconds();
 
     const hoursStr = hours < 10 ? '0' + hours : hours;
     const minsStr = mins < 10 ? '0' + mins : mins;
+    const secsStr = secs < 10 ? '0' + secs : secs;
 
-    return `${hoursStr}:${minsStr}`;
+    return `${hoursStr}:${minsStr}:${secsStr}`;
   }
 
   // For example: 2021-4-8 17:52:17
@@ -73,7 +75,6 @@ namespace utils {
     const hoursStr = hours < 10 ? '0' + hours : hours;
     const minsStr = mins < 10 ? '0' + mins : mins;
     const secsStr = secs < 10 ? '0' + secs : secs;
-    // const secsStr = '00';
 
     return `${year}/${monthStr}/${dateStr} ${hoursStr}:${minsStr}:${secsStr}`;
   }
@@ -82,7 +83,7 @@ namespace utils {
     return Array.from(new Set(data));
   }
 
-  export function dedupeObjectWithId<T extends { id: string }>(data: T[]): T[] {
+  export function dedupeObjectWithId<T extends { id: string; }>(data: T[]): T[] {
     const idSet = new Set<string>();
     const result = [];
 
@@ -109,18 +110,18 @@ namespace utils {
     };
   }
 
-  export function debouncePlus(fn: FunctionType, delay: number, immdiate = false, resultCallback) {
-    let timer: number = null;
+  export function debouncePlus(fn: FunctionType, delay: number, immdiate = false, resultCallback?: (result: any) => void) {
+    let timer: number | null = null;
     let isInvoke = false;
 
-    function _debounce(...arg: any[]) {
+    function _debounce(this: any, ...arg: any[]) {
       if (timer) clearTimeout(timer);
       if (immdiate && !isInvoke) {
         const result = fn.apply(this, arg);
         if (resultCallback && typeof resultCallback === 'function') resultCallback(result);
         isInvoke = true;
       } else {
-        timer = setTimeout(() => {
+        timer = window.setTimeout(() => {
           const result = fn.apply(this, arg);
           if (resultCallback && typeof resultCallback === 'function') resultCallback(result);
           isInvoke = false;
@@ -128,8 +129,6 @@ namespace utils {
         }, delay);
       }
     }
-
-    console.log('hi');
 
     _debounce.cancel = function () {
       if (timer) clearTimeout(timer);
@@ -224,7 +223,7 @@ namespace utils {
     }
   }
 
-  export function getImageSize(src: string): Promise<{ width: number; height: number }> {
+  export function getImageSize(src: string): Promise<{ width: number; height: number; }> {
     return new Promise((resolve) => {
       const imgEl = new Image();
 

@@ -9,7 +9,6 @@ module.exports = {
     '@typescript-eslint/no-explicit-any': ['off'],
     'react/react-in-jsx-scope': 'off',
     '@typescript-eslint/no-namespace': 'off',
-    'prettier/prettier': 'error',
     'react-hooks/rules-of-hooks': 'error',
     'react-hooks/exhaustive-deps': 'warn',
   },

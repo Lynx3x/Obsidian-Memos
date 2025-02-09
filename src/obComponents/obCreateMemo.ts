@@ -1,4 +1,5 @@
 import { moment } from 'obsidian';
+import type { TFile } from 'obsidian';
 import { getAllDailyNotes, getDailyNote } from 'obsidian-daily-notes-interface';
 import appStore from '../stores/appStore';
 import { DefaultMemoComposition, InsertAfter } from '../memos';
@@ -7,7 +8,7 @@ import utils from '../helpers/utils';
 
 interface MContent {
   content: string;
-  posNum?: number;
+  posNum: number;
 }
 
 // https://stackoverflow.com/questions/3115150/how-to-escape-regular-expression-special-characters-using-javascript
@@ -46,15 +47,16 @@ export async function waitForInsert(MemoContent: string, isTASK: boolean, insert
 
   const timeHour = date.format('HH');
   const timeMinute = date.format('mm');
+  const timeSecond = date.format('ss');
 
   let newEvent;
   let lineNum;
-  const timeText = String(timeHour) + `:` + String(timeMinute);
+  const timeText = String(timeHour) + `:` + String(timeMinute) + `:` + String(timeSecond);
 
   if (isTASK && DefaultMemoComposition === '') {
-    newEvent = `- [ ] ` + String(timeHour) + `:` + String(timeMinute) + ` ` + removeEnter;
+    newEvent = `- [ ] ${timeHour}:${timeMinute}:${timeSecond} ${removeEnter}`;
   } else if (!isTASK && DefaultMemoComposition === '') {
-    newEvent = `- ` + String(timeHour) + `:` + String(timeMinute) + ` ` + removeEnter;
+    newEvent = `- ${timeHour}:${timeMinute}:${timeSecond} ${removeEnter}`;
   }
 
   if (isTASK && DefaultMemoComposition != '') {
@@ -68,18 +70,32 @@ export async function waitForInsert(MemoContent: string, isTASK: boolean, insert
   if (!existingFile) {
     const file = await utils.createDailyNoteCheck(date);
     await dailyNotesService.getMyAllDailyNotes();
-    const fileContents = await vault.read(file);
-    const newFileContent = await insertAfterHandler(InsertAfter, newEvent, fileContents);
-    await vault.modify(file, newFileContent.content);
-    if (newFileContent.posNum === -1) {
-      const allLines = getAllLinesFromFile(newFileContent.content);
-      lineNum = allLines.length + 1;
-    } else {
-      lineNum = newFileContent.posNum + 1;
+    const fileContents = await vault.read(file as unknown as TFile) || '';
+    const newFileContent = await insertAfterHandler(InsertAfter || '', newEvent || '', fileContents);
+    if (newFileContent.content) {
+      await vault.modify(file as unknown as TFile, newFileContent.content);
+      if (newFileContent.posNum === -1) {
+        const allLines = getAllLinesFromFile(newFileContent.content);
+        lineNum = allLines.length + 1;
+      } else {
+        lineNum = newFileContent.posNum + 1;
+      }
     }
+    // 将新的memo添加到store中
+    memoService.pushMemo({
+      id: date.format('YYYYMMDDHHmmssSSS') + lineNum,
+      content: MemoContent,
+      deletedAt: '',
+      createdAt: date.format('YYYY/MM/DD HH:mm:ss'),
+      updatedAt: date.format('YYYY/MM/DD HH:mm:ss'),
+      memoType: isTASK ? 'TASK-TODO' : 'JOURNAL',
+      path: file.path,
+      hasId: '',
+      linkId: '',
+    });
     if (isTASK) {
       return {
-        id: date.format('YYYYMMDDHHmm') + '00' + lineNum,
+        id: date.format('YYYYMMDDHHmmssSSS') + lineNum,
         content: MemoContent,
         deletedAt: '',
         createdAt: date.format('YYYY/MM/DD HH:mm:ss'),
@@ -91,7 +107,7 @@ export async function waitForInsert(MemoContent: string, isTASK: boolean, insert
       };
     } else {
       return {
-        id: date.format('YYYYMMDDHHmm') + '00' + lineNum,
+        id: date.format('YYYYMMDDHHmmss') + lineNum,
         content: MemoContent,
         deletedAt: '',
         createdAt: date.format('YYYY/MM/DD HH:mm:ss'),
@@ -103,9 +119,9 @@ export async function waitForInsert(MemoContent: string, isTASK: boolean, insert
       };
     }
   } else {
-    const fileContents = await vault.read(existingFile);
-    const newFileContent = await insertAfterHandler(InsertAfter, newEvent, fileContents);
-    await vault.modify(existingFile, newFileContent.content);
+    const fileContents = await vault.read(existingFile as unknown as TFile) || '';
+    const newFileContent = await insertAfterHandler(InsertAfter || '', newEvent || '', fileContents);
+    await vault.modify(existingFile as unknown as TFile, newFileContent.content);
     if (newFileContent.posNum === -1) {
       const allLines = getAllLinesFromFile(newFileContent.content);
       lineNum = allLines.length + 1;
@@ -114,7 +130,7 @@ export async function waitForInsert(MemoContent: string, isTASK: boolean, insert
     }
     if (isTASK) {
       return {
-        id: date.format('YYYYMMDDHHmm') + '00' + lineNum,
+        id: date.format('YYYYMMDDHHmmss') + lineNum,
         content: MemoContent,
         deletedAt: '',
         createdAt: date.format('YYYY/MM/DD HH:mm:ss'),
@@ -126,7 +142,7 @@ export async function waitForInsert(MemoContent: string, isTASK: boolean, insert
       };
     } else {
       return {
-        id: date.format('YYYYMMDDHHmm') + '00' + lineNum,
+        id: date.format('YYYYMMDDHHmmss') + lineNum,
         content: MemoContent,
         deletedAt: '',
         createdAt: date.format('YYYY/MM/DD HH:mm:ss'),
@@ -163,19 +179,17 @@ export async function insertAfterHandler(targetString: string, formatted: string
   const foundNextHeader = nextHeaderPositionAfterTargetPosition !== -1;
 
   if (foundNextHeader) {
-    let endOfSectionIndex: number;
+    let insertPosition = targetPosition;
 
     for (let i = nextHeaderPositionAfterTargetPosition + targetPosition; i > targetPosition; i--) {
       const lineIsNewline: boolean = /^[\s\n ]*$/.test(fileContentLines[i]);
       if (!lineIsNewline) {
-        endOfSectionIndex = i;
+        insertPosition = i;
         break;
       }
     }
 
-    if (!endOfSectionIndex) endOfSectionIndex = targetPosition;
-
-    return await insertTextAfterPositionInBody(formatted, fileContent, endOfSectionIndex, foundNextHeader);
+    return await insertTextAfterPositionInBody(formatted, fileContent, insertPosition, foundNextHeader);
   } else {
     return await insertTextAfterPositionInBody(formatted, fileContent, fileContentLines.length - 1, foundNextHeader);
   }
@@ -200,7 +214,6 @@ export async function insertTextAfterPositionInBody(
   if (found) {
     const pre = splitContent.slice(0, pos + 1).join('\n');
     const post = splitContent.slice(pos + 1).join('\n');
-    // return `${pre}\n${text}\n${post}`;
     return {
       content: `${pre}\n${text}\n${post}`,
       posNum: pos,
@@ -219,7 +232,6 @@ export async function insertTextAfterPositionInBody(
         posNum: pos,
       };
     }
-    // return `${pre}${text}\n${post}`;
   }
 }
 

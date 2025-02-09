@@ -5,34 +5,31 @@ import { FIRST_TAG_REG, IMAGE_URL_REG, LINK_REG, MEMO_LINK_REG, NOP_FIRST_TAG_RE
 import utils from '../helpers/utils';
 import { checkShouldShowMemoWithFilters } from '../helpers/filter';
 import Memo from './Memo';
-// import toastHelper from "./Toast";
 import '../less/memolist.less';
 import dailyNotesService from '../services/dailyNotesService';
 import appStore from '../stores/appStore';
 import { Notice, Platform } from 'obsidian';
 import { HideDoneTasks } from '../memos';
-// import {moment} from 'obsidian';
 import { t } from '../translations/helper';
-
-// import { DefaultEditorLocation } from '../memos';
+import Pagination from './Pagination';
 
 interface Props {}
 
 export let copyShownMemos: Model.Memo[];
+
+const ITEMS_PER_PAGE = 10; // 每页显示10条记录
 
 const MemoList: React.FC<Props> = () => {
   const {
     locationState: { query },
     memoState: { memos },
   } = useContext(appContext);
-  // let reverseMemos: Model.Memo[];
-  // if(DefaultEditorLocation === "Bottom" && window.innerWidth < 875 && Platform.isMobile){
-  //   reverseMemos = memos.reverse();
-  // }
+
+  const [currentPage, setCurrentPage] = useState(1);
   const [isFetching, setFetchStatus] = useState(true);
   const wrapperElement = useRef<HTMLDivElement>(null);
+  
   const { tag: tagQuery, duration, type: memoContentType, text: textQuery, filter: queryId } = query;
-  // const showMemoFilter = Boolean(tagQuery || (duration && duration.from < duration.to) || memoType || textQuery || queryId);
   const queryFilter = queryService.getQueryById(queryId);
   const showMemoFilter = Boolean(
     tagQuery || (duration && duration.from < duration.to) || memoContentType || textQuery || queryFilter,
@@ -130,6 +127,20 @@ const MemoList: React.FC<Props> = () => {
 
   copyShownMemos = shownMemos;
 
+  // 分页计算
+  const totalPages = Math.ceil(shownMemos.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedMemos = shownMemos.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    wrapperElement.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    setCurrentPage(1); // 重置页码
+  }, [query, memos.length]);
+
   useEffect(() => {
     setTimeout(() => {
       memoService
@@ -170,11 +181,13 @@ const MemoList: React.FC<Props> = () => {
         locationService.setTagQuery(tagName);
       }
     } else if (targetEl.tagName === 'A' && targetEl.className === 'internal-link') {
-      const sourcePath = targetEl.getAttribute('data-filepath');
-      if (Platform.isMobile) {
-        workspace.openLinkText(sourcePath, sourcePath, false);
-      } else {
-        workspace.openLinkText(sourcePath, sourcePath, true);
+      const sourcePath = targetEl.getAttribute('data-filepath') || '';
+      if (sourcePath) {  // 只有在路径存在时才打开链接
+        if (Platform.isMobile) {
+          workspace.openLinkText(sourcePath, sourcePath, false);
+        } else {
+          workspace.openLinkText(sourcePath, sourcePath, true);
+        }
       }
     }
   }, []);
@@ -185,7 +198,7 @@ const MemoList: React.FC<Props> = () => {
       onClick={handleMemoListClick}
       ref={wrapperElement}
     >
-      {shownMemos.map((memo) => (
+      {paginatedMemos.map((memo) => (
         <Memo key={`${memo.id}-${memo.updatedAt}`} memo={memo} />
       ))}
       <div className="status-text-container">
@@ -199,6 +212,13 @@ const MemoList: React.FC<Props> = () => {
             : t('All Data is Loaded 🎉')}
         </p>
       </div>
+      {!isFetching && shownMemos.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
+      )}
     </div>
   );
 };

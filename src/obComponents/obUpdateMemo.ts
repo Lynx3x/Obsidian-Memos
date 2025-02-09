@@ -4,6 +4,10 @@ import { getDailyNote } from 'obsidian-daily-notes-interface';
 import dailyNotesService from '../services/dailyNotesService';
 import appStore from '../stores/appStore';
 
+function convertDailyNotes(notes: Record<string, any>): Record<string, any> {
+  return notes;
+}
+
 export async function changeMemo(
   memoid: string,
   originalContent: string,
@@ -22,11 +26,16 @@ export async function changeMemo(
     changeDate = moment(timeString, 'YYYYMMDDHHmmss');
   }
 
-  let file;
+  let file: TFile;
   if (path !== undefined) {
-    file = metadataCache.getFirstLinkpathDest('', path);
+    file = metadataCache.getFirstLinkpathDest('', path) as unknown as TFile;
   } else {
-    file = getDailyNote(changeDate, dailyNotes);
+    const notes = convertDailyNotes(dailyNotes);
+    const dailyNote = getDailyNote(changeDate, notes);
+    file = dailyNote as unknown as TFile;
+  }
+  if (!file) {
+    throw new Error('File not found');
   }
   const fileContent = await vault.read(file);
   const fileLines = getAllLinesFromFile(fileContent);
@@ -38,10 +47,13 @@ export async function changeMemo(
   return {
     id: memoid,
     content: removeEnter,
+    user_id: 1,
     deletedAt: '',
     createdAt: changeDate.format('YYYY/MM/DD HH:mm:ss'),
     updatedAt: changeDate.format('YYYY/MM/DD HH:mm:ss'),
-    memoType: memoType,
+    memoType: memoType || 'JOURNAL',
+    hasId: memoid.slice(-6),
+    linkId: '',
     path: file.path,
   };
 }
@@ -49,9 +61,10 @@ export async function changeMemo(
 export function getFile(memoid: string): TFile {
   const { dailyNotes } = dailyNotesService.getState();
   const timeString = memoid.slice(0, 14);
-  const changeDate = moment(timeString, 'YYYYMMDDHHmmSS');
-  const dailyNote = getDailyNote(changeDate, dailyNotes);
-  return dailyNote;
+  const changeDate = moment(timeString, 'YYYYMMDDHHmmss');
+  const notes = convertDailyNotes(dailyNotes);
+  const dailyNote = getDailyNote(changeDate, notes);
+  return dailyNote as unknown as TFile;
 }
 
 const getAllLinesFromFile = (cache: string) => cache.split(/\r?\n/);

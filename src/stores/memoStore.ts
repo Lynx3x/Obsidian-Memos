@@ -4,7 +4,7 @@ export interface State {
   memos: Model.Memo[];
   commentMemos: Model.Memo[];
   tags: string[];
-  tagsNum: object;
+  tagsNum: { [key: string]: number; };
 }
 
 interface SetMemosAction {
@@ -25,7 +25,7 @@ interface SetTagsAction {
   type: 'SET_TAGS';
   payload: {
     tags: string[];
-    tagsNum: object;
+    tagsNum: { [key: string]: number; };
   };
 }
 
@@ -79,8 +79,6 @@ export function reducer(state: State, action: Actions): State {
         ),
       );
 
-      // const memos = action.payload.memos.sort((a, b) => utils.getTimeStampByDate(b.createdAt) - utils.getTimeStampByDate(a.createdAt));
-
       return {
         ...state,
         memos: [...memos],
@@ -92,8 +90,6 @@ export function reducer(state: State, action: Actions): State {
           (a, b) => utils.getTimeStampByDate(b.createdAt) - utils.getTimeStampByDate(a.createdAt),
         ),
       );
-
-      // const memos = action.payload.memos.sort((a, b) => utils.getTimeStampByDate(b.createdAt) - utils.getTimeStampByDate(a.createdAt));
 
       return {
         ...state,
@@ -181,5 +177,5 @@ export const defaultState: State = {
   memos: [],
   commentMemos: [],
   tags: [],
-  tagsNum: {} as { [key: string]: number },
+  tagsNum: {},
 };

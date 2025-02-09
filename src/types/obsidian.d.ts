@@ -1,25 +1,52 @@
-import 'obsidian';
-import { DataviewAPI } from 'obsidian-dataview';
+import type { TFile as ObsidianTFile, TFolder } from 'obsidian';
 
 declare module 'obsidian' {
-  interface WorkspaceLeaf {
-    width: number;
-  }
-
   interface App {
     plugins: {
-      getPlugin(name: string): any;
+      getPlugin(id: string): any;
     };
   }
 
-  interface MetadataCache {
-    on(name: 'dataview:api-ready', callback: (api: DataviewAPI) => any, ctx?: any): EventRef;
-
-    on(name: 'dataview:metadata-change', callback: (op: string, file: TFile) => any, ctx?: any): EventRef;
+  interface DataWriteOptions {
+    silent?: boolean;
   }
 
-  interface Workspace {
-    on(name: 'receive-text-menu', callback: (menu: Menu, source: string) => any, ctx?: any): EventRef;
-    on(name: 'receive-files-menu', callback: (menu: Menu, file: array) => any, ctx?: any): EventRef;
+  // 简化 DataAdapter 接口，使用 any 来处理方法的版本差异
+  interface DataAdapter {
+    process: any;
+  }
+
+  interface Vault {
+    adapter: DataAdapter;
+    getFileByPath(path: string): TFile | null;
+    getFolderByPath(path: string): TFolder | null;
+    getAllFolders(): TFolder[];
+    createFolder(path: string): Promise<any>;
+    read(file: TFile): Promise<string>;
+    process(): Promise<void>;
+  }
+}
+
+export interface BaseMemo {
+  id: string;
+  content: string;
+  user_id?: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+  memoType: string;
+  hasId: string;
+  linkId: string;
+  path?: string;
+}
+
+declare global {
+  type TFile = ObsidianTFile & {
+    vault: any;
+    parent: TFolder;
+  };
+
+  interface Window {
+    app: import('obsidian').App;
   }
 }
