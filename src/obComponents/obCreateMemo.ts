@@ -3,7 +3,6 @@ import type { TFile } from 'obsidian';
 import { getAllDailyNotes, getDailyNote } from 'obsidian-daily-notes-interface';
 import appStore from '../stores/appStore';
 import { DefaultMemoComposition, InsertAfter } from '../memos';
-import { dailyNotesService, memoService } from '../services';
 import utils from '../helpers/utils';
 
 interface MContent {

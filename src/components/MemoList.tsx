@@ -209,7 +209,9 @@ const MemoList: React.FC<Props> = () => {
             ? t('Noooop!')
             : showMemoFilter
             ? ''
-            : t('All Data is Loaded 🎉')}
+            : currentPage === totalPages
+            ? t('All Data is Loaded 🎉')
+            : ''}
         </p>
       </div>
       {!isFetching && shownMemos.length > 0 && (
