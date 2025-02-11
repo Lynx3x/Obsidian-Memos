@@ -5,6 +5,24 @@ import appStore from '../stores/appStore';
 import Only from './common/OnlyWhen';
 import Image from './Image';
 
+const imageGridStyles = {
+  display: 'grid',
+  gridTemplateColumns: `repeat(3, 150px)`,
+  gap: '1px',
+  marginTop: '4px',
+  maxWidth: '452px'
+} as const;
+
+const imageItemStyles = {
+  width: '150px',
+  height: '150px',
+} as const;
+
+const imageStyle = {
+  width: '100%',
+  height: '100%'
+} as const;
+
 interface Props {
   memo: string;
 }
@@ -131,22 +149,33 @@ const MemoImage: React.FC<Props> = (props: Props) => {
   return (
     <>
       <Only when={externalImageUrls.length > 0}>
-        <div className="images-wrapper">
+        <div className="images-wrapper" style={imageGridStyles}>
           {externalImageUrls.map((imgUrl, idx) => (
-            <Image alt="" key={idx} className="memo-img" imgUrl={imgUrl} referrerPolicy="no-referrer" />
+            <div key={idx} style={imageItemStyles}>
+              <Image
+                alt=""
+                className="memo-img"
+                imgUrl={imgUrl}
+                referrerPolicy="no-referrer"
+                style={imageStyle}
+              />
+            </div>
           ))}
         </div>
       </Only>
       <Only when={internalImageUrls.length > 0}>
-        <div className="images-wrapper internal-embed image-embed is-loaded">
+        <div className="images-wrapper internal-embed image-embed is-loaded" style={imageGridStyles}>
           {internalImageUrls.map((imgUrl, idx) => (
-            <Image
-              key={idx}
-              className="memo-img"
-              imgUrl={imgUrl.path}
-              alt={imgUrl.altText}
-              filepath={imgUrl.filepath}
-            />
+            <div key={idx} style={imageItemStyles}>
+              <Image
+                key={idx}
+                className="memo-img"
+                imgUrl={imgUrl.path}
+                alt={imgUrl.altText}
+                filepath={imgUrl.filepath}
+                style={imageStyle}
+              />
+            </div>
           ))}
         </div>
       </Only>
